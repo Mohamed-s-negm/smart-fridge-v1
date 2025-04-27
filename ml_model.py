@@ -12,14 +12,15 @@ from sklearn.metrics import classification_report, accuracy_score, confusion_mat
 class ML_Model:
 
     #define whether we have an already built-in model or just add the dataset path
-    def __init__(self, data_path = None, model_file = None, drops = None, ):
+    def __init__(self, data_path = None, model_file = None, x_cols = None, y_cols = None):
         self.data_path = data_path
         self.model_file = model_file
         self.X_train = self.X_test = self.y_train = self.y_test = None
         self.model = None
         self.predictions = None
         self.start_evaluate = False
-        self.drops = drops
+        self.x_cols = x_cols
+        self.y_cols = y_cols
 
         #We check for the data_path and model_file if exists
         if data_path:
@@ -30,8 +31,8 @@ class ML_Model:
     #We prepare the data to be handled by the model
     def load_split_data(self, path):
         df = pd.read_csv(path)
-        X = df.drop(columns=self.drops)
-        y = df['State']
+        X = df[self.x_cols]
+        y = df[self.y_cols]
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
             X, y, test_size=0.3, random_state=101
         )
