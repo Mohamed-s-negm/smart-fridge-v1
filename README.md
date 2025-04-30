@@ -11,3 +11,7 @@ NOTICE: There is a tag v1.0.1 which has an ml model which is made using RandomFo
 
 Now, the ml models are ready and now we head into the dl model that we need.
 
+The food-101-dataset had to be reshaped so, I created the reshape-food-101.py file to do the job.
+
+I have finished the dl image classification class model which is in dl_model.py. This file now can be used to create any image classification model.
+
