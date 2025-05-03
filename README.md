@@ -34,6 +34,11 @@ The model didn't learn anything so I got rid of the label_smoothing and unfrooze
 I also got rid of the added transformations which means back to normal augementations. I changed back some of the model initial definitions.
 I got nearly 76 percent at the 9th epoch which is kinda fine but it showed overfitting.
 
-This time I will add additional transformations.
+This time I will add additional transformations. The made model after 45 epochs had 73 % accuracy yet it gave wrong values. 
+
+I gave some small weight_decay of 0.003.
+
+I have made a new class to make an image classification using ResNet50 model.
+
 
 
