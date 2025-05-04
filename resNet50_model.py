@@ -121,6 +121,7 @@ class ResNet50:
 
             if epoch_no_improve >= self.early_stopping_patience:
                 print(f"Early stopping after {epoch+1} epochs.")
+                break
 
         print(f"Best val Acc: {best_acc:.4f}")
         self.model.load_state_dict(best_model_wts)

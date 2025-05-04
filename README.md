@@ -36,7 +36,9 @@ I got nearly 76 percent at the 9th epoch which is kinda fine but it showed overf
 
 This time I will add additional transformations. The made model after 45 epochs had 73 % accuracy yet it gave wrong values. 
 
-I gave some small weight_decay of 0.003.
+Using CosineAnnealingLR instead of ReduceLROnPlateau at scheduler to get a slightly higher accuracy.
+The highest percentage obtained was 74%.
+VGG_3rd is currently the best among them.
 
 I have made a new class to make an image classification using ResNet50 model.
 

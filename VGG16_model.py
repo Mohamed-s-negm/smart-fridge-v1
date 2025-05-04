@@ -7,6 +7,9 @@ from torch.utils.data import random_split
 from PIL import Image
 import copy
 import os
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+import numpy as np
 
 class DL_ImgClass:
 
@@ -29,8 +32,10 @@ class DL_ImgClass:
     def prepare_data(self, data_dir, input_size=(224, 224)):
         train_transform = transforms.Compose([
             transforms.Resize(input_size),
+            transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2),
+            transforms.RandomResizedCrop(224),
+            transforms.RandomAffine(degrees=10, translate=(0.1, 0.1)),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(15),
             transforms.ToTensor(),
             transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
         ])
@@ -63,10 +68,15 @@ class DL_ImgClass:
         assert self.num_classes is not None, "num_classes must be given a value"
         vgg16 = models.vgg16(pretrained=True)
 
-        # Unfreeze all layers for full fine-tuning
-        for param in vgg16.parameters():
+        for param in vgg16.features.parameters():
+            param.requires_grad = False
+
+        for param in vgg16.classifier.parameters():
             param.requires_grad = True
 
+        for name, param in vgg16.features.named_parameters():
+            if int(name.split('.')[0]) >= 17:  # conv4_3 and up
+                param.requires_grad = True
 
         # Replace the last layer of the classifier
         vgg16.classifier[6] = nn.Linear(vgg16.classifier[6].in_features, self.num_classes)
@@ -86,6 +96,7 @@ class DL_ImgClass:
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_acc = 0.0
         epoch_no_improve = 0
+        scaler = torch.cuda.amp.GradScaler()  # For AMP
 
         for epoch in range(self.num_epochs):
             print(f"Epoch {epoch + 1}/{self.num_epochs}")
@@ -112,8 +123,10 @@ class DL_ImgClass:
                         loss = self.criterion(outputs, labels)
 
                         if phase == 'train':
-                            loss.backward()
-                            self.optimizer.step()
+                            scaler.scale(loss).backward()
+                            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=5.0)
+                            scaler.step(self.optimizer)
+                            scaler.update()
 
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data)
@@ -137,6 +150,7 @@ class DL_ImgClass:
 
             if epoch_no_improve >= self.early_stopping_patience:
                 print(f"Early stopping after {epoch+1} epochs.")
+                break
 
         print(f"Best val Acc: {best_acc:.4f}")
         self.model.load_state_dict(best_model_wts)
@@ -148,6 +162,8 @@ class DL_ImgClass:
         self.model.eval()
         correct = 0
         total = 0
+        all_preds = []
+        all_labels = []
 
         with torch.no_grad():
             for inputs, labels in self.test_loader:
@@ -158,7 +174,19 @@ class DL_ImgClass:
                 total += labels.size(0)
                 correct += (preds == labels).sum().item()
 
+                all_preds.extend(preds.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
         print(f"Test Accuracy: {100 * correct / total:.2f}%")
+
+        #Confusion matrix
+        cm = confusion_matrix(all_labels, all_preds)
+        disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=self.class_names)
+        fig, ax = plt.subplots(figsize=(12, 12))
+        disp.plot(ax=ax, xticks_rotation='vertical', cmap='viridis')
+        plt.title("Confusion Matrix")
+        plt.tight_layout()
+        plt.show()
 
 
     #7. Save the new model

@@ -6,7 +6,7 @@ from pathlib import Path
 try:
     path_1 = "./trained_models/trained_spoil_rf_model.pkl"
     path_2 = "./trained_models/trained_amount_rf_model.pkl"
-    dl_path = "./dl_trained_models/VGG16_5th.pth"
+    dl_path = "./dl_trained_models/VGG16_3rd.pth"
     image_path = "./apple-pie.jpeg"
     path = Path("C:/Users/msen6/Documents/Github Projects/datasets/modified-food-101")
 
