@@ -1,84 +1,90 @@
-import pandas as pd
 import numpy as np
-import random
-from datetime import datetime, timedelta
+import pandas as pd
 
-# 1) Food specs & numeric encoding
-food_specs = {
-    "Bread":    {"code":1, "temp_mu":20, "temp_sd":3, "hum_mu":65, "hum_sd":8,  "gas_mu":50,  "gas_sd":20},
-    "Meat":     {"code":2, "temp_mu":4,  "temp_sd":1, "hum_mu":75, "hum_sd":5,  "gas_mu":200, "gas_sd":80},
-    "Chicken":  {"code":3, "temp_mu":5,  "temp_sd":1, "hum_mu":80, "hum_sd":5,  "gas_mu":180, "gas_sd":70},
-    "Fish":     {"code":4, "temp_mu":2,  "temp_sd":1, "hum_mu":85, "hum_sd":4,  "gas_mu":220, "gas_sd":90},
-    "Fruit":    {"code":5, "temp_mu":15, "temp_sd":4, "hum_mu":75, "hum_sd":6,  "gas_mu":30,  "gas_sd":15},
-    "Vegetable":{"code":6, "temp_mu":10, "temp_sd":3, "hum_mu":85, "hum_sd":5,  "gas_mu":40,  "gas_sd":20},
-    "Cheese":   {"code":7, "temp_mu":8,  "temp_sd":2, "hum_mu":80, "hum_sd":5,  "gas_mu":60,  "gas_sd":20},
-    "Eggs":     {"code":8, "temp_mu":5,  "temp_sd":1.5,"hum_mu":90, "hum_sd":3,  "gas_mu":20,  "gas_sd":10},
-}
+# 1) Define your 50 food classes
+food_types = [
+    'apple-pie', 'baklava', 'beef_carpaccio', 'beef_salad', 'bread_pudding',
+    'breakfast_burrito', 'caesar_salad', 'carrot_cake', 'ceviche', 'cheese_plate',
+    'cheesecake', 'chicken_curry', 'chicken_wings', 'chocolate_cake',
+    'creme_brulee', 'cup_cakes', 'deviled_eggs', 'donuts', 'dumplings',
+    'edamame', 'falafel', 'filet_mignon', 'fish_and_chips', 'french_fries',
+    'french_onion_soup', 'french_toast', 'fried_calamari', 'fried_rice',
+    'garlic_bread', 'greek_salad', 'grilled_salmon', 'hot_and_sour_soup',
+    'hot_dog', 'hummus', 'ice_cream', 'lobster_roll_sandwich', 'macaroni_and_cheese',
+    'nachos', 'omelette', 'onion_rings', 'pancakes', 'pizza', 'ramen', 'risotto',
+    'sashimi', 'seaweed_salad', 'spaghetti_carbonara', 'strawberry_shortcake',
+    'sushi', 'waffles'
+]
 
-# 2) Targets for 150k samples
-TOTAL = 150_000
-targets = {
-    "Good":         int(TOTAL * 0.33),
-    "Near Spoiled": int(TOTAL * 0.33),
-    "Spoiled":      TOTAL - int(TOTAL*0.33)*2
-}
+# Build mapping from food_type string → integer class index
+class_to_idx = {food: idx for idx, food in enumerate(food_types)}
 
-# 3) Helper to simulate one row for a given label
-def simulate_row(label):
-    food = random.choice(list(food_specs))
-    spec = food_specs[food]
-    # timestamp in last 30 days
-    ts = datetime.now() - timedelta(days=random.randint(0,30),
-                                    seconds=random.randint(0,86400))
-    # base draws
-    temp   = np.random.normal(spec["temp_mu"], spec["temp_sd"])
-    hum    = np.random.normal(spec["hum_mu"], spec["hum_sd"])
-    gas    = np.random.normal(spec["gas_mu"], spec["gas_sd"])
-    days   = random.randint(0,10)
-    weight = np.random.normal(400, 200)
-    # push features toward the desired label
-    if label == "Good":
-        temp  -= abs(np.random.uniform(0, spec["temp_sd"]))
-        hum   -= abs(np.random.uniform(0, spec["hum_sd"]))
-        gas   -= abs(np.random.uniform(0, spec["gas_sd"]))
-        days  = random.randint(0,4)
-    elif label == "Near Spoiled":
-        temp  += np.random.uniform(0, spec["temp_sd"])
-        hum   += np.random.uniform(0, spec["hum_sd"])
-        gas   += np.random.uniform(0, spec["gas_sd"])
-        days   = random.randint(3,7)
-    else:  # Spoiled
-        temp  += abs(np.random.uniform(spec["temp_sd"], 2*spec["temp_sd"]))
-        hum   += abs(np.random.uniform(spec["hum_sd"], 2*spec["hum_sd"]))
-        gas   += abs(np.random.uniform(spec["gas_sd"], 2*spec["gas_sd"]))
-        days   = random.randint(6,15)
+n_per_class = 1000
+rows = []
+idx = 1
 
-    amount = "Enough" if weight >= 300 else "Not Enough"
-    return {
-        "timestamp":           ts.strftime("%Y-%m-%d %H:%M:%S"),
-        "food_name":           food,
-        "food_numeric":        spec["code"],
-        "temperature_celsius": round(temp, 2),
-        "humidity_percent":    round(hum, 2),
-        "gas_ppm":             round(gas, 2),
-        "days_since_added":    days,
-        "weight_grams":        round(weight, 2),
-        "is_spoiled":          label,
-        "amount_status":       amount
-    }
+for food in food_types:
+    for _ in range(n_per_class):
+        # weight in grams
+        weight = np.random.normal(loc=350, scale=100)
+        weight = float(np.clip(weight, 50, 800))
 
-# 4) Generate balanced dataset
-data = []
-counts = {"Good":0, "Near Spoiled":0, "Spoiled":0}
-while sum(counts.values()) < TOTAL:
-    for label in ["Good","Near Spoiled","Spoiled"]:
-        if counts[label] < targets[label]:
-            data.append(simulate_row(label))
-            counts[label] += 1
+        # temperature (°C)
+        if food in ('ice_cream','creme_brulee'):
+            temp = np.random.normal(2, 1)
+        elif any(x in food for x in ('sushi','ceviche','sashimi','fish')):
+            temp = np.random.normal(4, 1)
+        else:
+            temp = np.random.normal(5, 2)
+        temp = round(float(np.clip(temp, 0, 10)), 1)
 
-# 5) Shuffle, DataFrame & CSV
-random.shuffle(data)
-df = pd.DataFrame(data)
-df.to_csv("smart_fridge_realistic_dataset.csv", index=False)
+        # humidity (%)
+        if any(x in food for x in ('bread','pizza','baklava')):
+            humidity = np.random.normal(40, 10)
+        else:
+            humidity = np.random.normal(60, 15)
+        humidity = round(float(np.clip(humidity, 20, 100)), 1)
 
-print("Done! Distribution:", df["is_spoiled"].value_counts())
+        # gas_ppm
+        if any(x in food for x in ('apple','carrot','salad','edamame','dumplings')):
+            gas = np.random.normal(20, 5)
+        else:
+            gas = np.random.normal(5, 2)
+        gas = round(max(0.0, gas), 1)
+
+        # days since added
+        if any(x in food for x in ('salad','sushi','ceviche')):
+            days = np.random.randint(0, 4)
+        else:
+            days = np.random.randint(0, 8)
+
+        # determine spoilage condition
+        if temp > 8 or days > 6 or gas > 25:
+            condition = 'spoiled'
+        elif temp > 6 or days > 4 or gas > 15:
+            condition = 'near_spoiled'
+        else:
+            condition = 'fine'
+
+        # sufficient?
+        sufficient = 'sufficient' if weight > 300 else 'not_sufficient'
+
+        rows.append({
+            'index': idx,
+            'food_type': food,
+            'class_index': class_to_idx[food],
+            'weight_g': round(weight, 1),
+            'temperature_C': temp,
+            'humidity_%': humidity,
+            'gas_ppm': gas,
+            'days_since_added': days,
+            'condition': condition,
+            'sufficient': sufficient
+        })
+        idx += 1
+
+# Create DataFrame, shuffle, and save
+df = pd.DataFrame(rows)
+df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+df.to_csv('smart_fridge_dataset_v1.csv', index=False)
+print(f"Generated {len(df)} rows with class_index 0–{len(food_types)-1} and saved to smart_fridge_dataset.csv")
