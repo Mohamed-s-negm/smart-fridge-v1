@@ -42,5 +42,9 @@ VGG_3rd is currently the best among them.
 
 I have made a new class to make an image classification using ResNet50 model.
 
+Now, I have combines both models together and then made the UI using PySide6.
 
+I also added a bat file to run the main file when we run the file.
+
+We can say now that the project is finished.
 
