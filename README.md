@@ -46,5 +46,7 @@ Now, I have combines both models together and then made the UI using PySide6.
 
 I also added a bat file to run the main file when we run the file.
 
+I have added some features to show the user the nutrition of the food. Also, I altered the project from dealing with the weight of the food from just a sum but to get the sufficient amount the user needs per meal and deals with it whether it's enough or not.
+
 We can say now that the project is finished.
 
