@@ -113,7 +113,8 @@ uploaded_images_layout = QVBoxLayout(uploaded_images_widget)
 uploaded_images_scroll.setWidget(uploaded_images_widget)
 uploaded_images_scroll.setFixedHeight(150)
 
-image_data = []  # Stores: {path, weight_input, days_input, row_layout, image_label}
+# Store widget references to prevent deletion
+image_data = []  # Stores: {path, weight_input, days_input, row_widget, image_label}
 
 # Upload images
 def upload_images():
@@ -124,6 +125,8 @@ def upload_images():
             child = uploaded_images_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
+
+        image_data.clear()  # Clear the data list
 
         for file in files:
             # Create a horizontal layout for each image
@@ -156,11 +159,12 @@ def upload_images():
             row_widget.setLayout(image_row)
             uploaded_images_layout.addWidget(row_widget)
 
+            # Store references to prevent deletion
             image_data.append({
                 "path": file,
                 "weight_input": weight_input,
                 "days_input": days_input,
-                "row_layout": image_row,
+                "row_widget": row_widget,
                 "image_label": thumb_label
             })
 
@@ -253,43 +257,47 @@ def analyze_photos():
     food_to_index = df[['food_type', 'class_index']].drop_duplicates().set_index('food_type')['class_index'].to_dict()
 
     for item in image_data:
-        img_path = item['path']
-        weight = item['weight_input'].value()
-        days = item['days_input'].value()
+        try:
+            img_path = item['path']
+            weight = item['weight_input'].value()
+            days = item['days_input'].value()
 
-        food_name_predicted = predict_food_name(img_path)
-        print(f"Predicted food: {food_name_predicted}")  # Debug print
-        class_ind = food_to_index.get(food_name_predicted)
+            food_name_predicted = predict_food_name(img_path)
+            print(f"Predicted food: {food_name_predicted}")  # Debug print
+            class_ind = food_to_index.get(food_name_predicted)
 
-        # Get nutrition information and portion
-        result = food_info(food_name_predicted)
-        if result[0] is None:  # Check if there was an error
-            continue
+            # Get nutrition information and portion
+            result = food_info(food_name_predicted)
+            if result[0] is None:  # Check if there was an error
+                continue
+                
+            portion, calories, protein, fat, carbs, sugar, fiber, sodium = result
             
-        portion, calories, protein, fat, carbs, sugar, fiber, sodium = result
-        
-        # Determine sufficiency based on portion
-        sufficiency = "sufficient" if weight >= portion else "not enough"
-        
-        # Get condition from spoil model
-        condition = predict_condition(class_ind, temp, humidity, gas, days)
+            # Determine sufficiency based on portion
+            sufficiency = "sufficient" if weight >= portion else "not enough"
+            
+            # Get condition from spoil model
+            condition = predict_condition(class_ind, temp, humidity, gas, days)
 
-        QMessageBox.information(
-            window,
-            f"Prediction for {food_name_predicted}",
-            f"Food: {food_name_predicted}\n"
-            f"Condition: {condition}\n"
-            f"Sufficiency: {sufficiency}\n\n"
-            f"Nutrition Information:\n"
-            f"Calories: {calories:.1f} kcal\n"
-            f"Protein: {protein:.1f}g\n"
-            f"Fat: {fat:.1f}g\n"
-            f"Carbs: {carbs:.1f}g\n"
-            f"Sugar: {sugar:.1f}g\n"
-            f"Fiber: {fiber:.1f}g\n"
-            f"Sodium: {sodium:.1f}mg\n\n"
-            f"Recommended portion: {portion:.1f}g"
-        )
+            QMessageBox.information(
+                window,
+                f"Prediction for {food_name_predicted}",
+                f"Food: {food_name_predicted}\n"
+                f"Condition: {condition}\n"
+                f"Sufficiency: {sufficiency}\n\n"
+                f"Nutrition Information:\n"
+                f"Calories: {calories:.1f} kcal\n"
+                f"Protein: {protein:.1f}g\n"
+                f"Fat: {fat:.1f}g\n"
+                f"Carbs: {carbs:.1f}g\n"
+                f"Sugar: {sugar:.1f}g\n"
+                f"Fiber: {fiber:.1f}g\n"
+                f"Sodium: {sodium:.1f}mg\n\n"
+                f"Recommended portion: {portion:.1f}g"
+            )
+        except Exception as e:
+            QMessageBox.warning(window, "Error", f"Error processing image: {str(e)}")
+            continue
 
 # Buttons
 upload_button = QPushButton("Upload Images")
