@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 
 class SmartFridgePi:
-    def __init__(self, broker="192.168.1.3", port=1883):
+    def __init__(self, broker="localhost", port=1883):
         # Initialize OLED display
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.oled = adafruit_ssd1306.SSD1306_I2C(128, 64, self.i2c, addr=0x3C)
@@ -19,12 +19,12 @@ class SmartFridgePi:
 
         # Initialize camera
         self.picam2 = Picamera2()
-        camera_config = self.picam2.create_still_configuration()
+        camera_config = self.picam2.create_still_configuration(main={"size": (1920, 1080)})
         self.picam2.configure(camera_config)
         self.picam2.start()
 
         # Initialize MQTT client
-        self.client = mqtt.Client()
+        self.client = mqtt.Client(protocol=mqtt.MQTTv5)
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.connect(broker, port)
@@ -32,7 +32,7 @@ class SmartFridgePi:
         # Image path
         self.image_path = "./captured_image.jpg"
 
-    def on_connect(self, client, userdata, flags, rc):
+    def on_connect(self, client, userdata, flags, rc, properties=None):
         print(f"Connected with result code {rc}")
         # Subscribe to the response topic
         client.subscribe("smart_fridge/response")
@@ -82,8 +82,10 @@ class SmartFridgePi:
             
             # Send message
             self.client.publish("smart_fridge/image", json.dumps(message))
+            print("Image sent to MQTT broker")
             
         except Exception as e:
+            print(f"Error sending image: {str(e)}")
             self.display_text(f"Error: {str(e)}", 0)
 
     def display_text(self, text, y_position):
